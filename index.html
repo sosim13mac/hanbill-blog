@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hanbill Tech Blog</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary-color: #004695; --text-color: #333; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: var(--text-color); margin: 0; padding: 0; background: #fafafa; }
+        header { background: white; border-bottom: 1px solid #eee; padding: 2rem 1rem; text-align: center; }
+        header h1 { margin: 0; color: var(--primary-color); font-size: 2.5rem; }
+        .container { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+        article { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        article h2 { margin-top: 0; color: var(--primary-color); }
+        .meta { color: #999; font-size: 0.9rem; margin-bottom: 1rem; }
+        footer { text-align: center; padding: 2rem; color: #999; font-size: 0.8rem; }
+        .status { text-align: center; padding: 2rem; color: #999; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Hanbill Tech Blog</h1>
+        <p>건강한 먹거리 정보를 전합니다</p>
+    </header>
+    <div class="container" id="posts-container">
+        <div class="status">데이터를 불러오는 중...</div>
+    </div>
+    <footer>
+        &copy; 2026 Hanbill Blog.
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://bdzgitzpbgdbvtygdtgq.supabase.co/';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkemdpdHpwYmdkYnZ0eWdkdGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NzY1MTAsImV4cCI6MjA5MTA1MjUxMH0.mL9FAAJY4O9YkkFlPRg1PF7QPgY60ZQxHrp92yQSres'; 
+
+        async function fetchPosts() {
+            const container = document.getElementById('posts-container');
+            if (typeof supabase === 'undefined') {
+                container.innerHTML = '<div class="status">라이브러리 로드 실패</div>';
+                return;
+            }
+
+            const { createClient } = supabase;
+            const client = createClient(SUPABASE_URL, SUPABASE_KEY);
+            
+            try {
+                const { data: posts, error } = await client
+                    .from('posts')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!posts || posts.length === 0) {
+                    container.innerHTML = '<div class="status">아직 등록된 포스팅이 없습니다. (DB에 데이터를 추가해 보세요!)</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                posts.forEach(post => {
+                    const date = new Date(post.created_at).toLocaleDateString('ko-KR');
+                    const article = document.createElement('article');
+                    article.innerHTML = `
+                        <div class="meta">${date}</div>
+                        <h2>${post.title}</h2>
+                        <p>${post.content.replace(/\n/g, '<br>')}</p>
+                    `;
+                    container.appendChild(article);
+                });
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="status">오류 발생: ${err.message}</div>`;
+            }
+        }
+
+        fetchPosts();
+    </script>
+</body>
+</html>
