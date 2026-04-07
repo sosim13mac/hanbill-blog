@@ -6,76 +6,126 @@
     <title>Hanbill Tech Blog</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --primary-color: #004695; --text-color: #333; }
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: var(--text-color); margin: 0; padding: 0; background: #fafafa; }
-        header { background: white; border-bottom: 1px solid #eee; padding: 2rem 1rem; text-align: center; }
-        header h1 { margin: 0; color: var(--primary-color); font-size: 2.5rem; }
-        .container { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
-        article { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 2rem; }
-        article h2 { margin-top: 0; color: var(--primary-color); }
-        .meta { color: #999; font-size: 0.9rem; margin-bottom: 1rem; }
-        footer { text-align: center; padding: 2rem; color: #999; font-size: 0.8rem; }
-        .status { text-align: center; padding: 2rem; color: #999; }
+        :root { --primary-color: #004695; --bg-color: #f8f9fa; --card-bg: #ffffff; --text-main: #333; --text-muted: #666; }
+        body { font-family: 'Pretendard', 'Malgun Gothic', sans-serif; margin: 0; background: var(--bg-color); color: var(--text-main); }
+        header { background: #fff; border-bottom: 1px solid #eee; padding: 3rem 1rem; text-align: center; }
+        header h1 { margin: 0; color: var(--primary-color); font-size: 2.2rem; cursor: pointer; }
+        
+        .container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+        
+        /* 카드 그리드 스타일 */
+        #posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+        .card { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; display: flex; flex-direction: column; height: 100%; border: 1px solid #eee; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .card-body { padding: 1.5rem; flex-grow: 1; }
+        .card-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+        .card-title { font-size: 1.25rem; font-weight: bold; margin: 0 0 1rem 0; color: var(--primary-color); line-height: 1.4; }
+        .card-excerpt { font-size: 0.95rem; color: #555; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6; }
+        
+        /* 상세 보기 레이어 */
+        #post-detail { display: none; background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); animation: fadeIn 0.3s ease-out; }
+        #post-detail h2 { color: var(--primary-color); font-size: 2rem; margin-top: 0; }
+        .detail-content { font-size: 1.1rem; line-height: 1.8; white-space: pre-wrap; margin-top: 1.5rem; }
+        .btn-back { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); text-decoration: none; font-size: 0.9rem; cursor: pointer; }
+        .btn-back:hover { color: var(--primary-color); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .status { text-align: center; padding: 5rem 0; color: var(--text-muted); }
     </style>
 </head>
 <body>
     <header>
-        <h1>Hanbill Tech Blog</h1>
-        <p>건강한 먹거리 정보를 전합니다</p>
+        <h1 onclick="showList()">Hanbill Tech Blog</h1>
+        <p>함께 성장하는 기술 이야기</p>
     </header>
-    <div class="container" id="posts-container">
-        <div class="status">데이터를 불러오는 중...</div>
+
+    <div class="container">
+        <!-- 목록 화면 -->
+        <div id="list-view">
+            <div id="posts-grid" class="status">데이터를 불러오는 중...</div>
+        </div>
+
+        <!-- 상세 화면 -->
+        <div id="post-detail">
+            <div class="btn-back" onclick="showList()">← 목록으로 돌아가기</div>
+            <div id="detail-body"></div>
+        </div>
     </div>
-    <footer>
-        &copy; 2026 Hanbill Blog.
-    </footer>
 
     <script>
         const SUPABASE_URL = 'https://bdzgitzpbgdbvtygdtgq.supabase.co/';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkemdpdHpwYmdkYnZ0eWdkdGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NzY1MTAsImV4cCI6MjA5MTA1MjUxMH0.mL9FAAJY4O9YkkFlPRg1PF7QPgY60ZQxHrp92yQSres'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkemdpdHpwYmdkYnZ0eWdkdGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NzY1MTAsImV4cCI6MjA5MTA1MjUxMH0.mL9FAAJY4O9YkkFlPRg1PF7QPgY60ZQxHrp92yQSres';
+        
+        const { createClient } = supabase;
+        const client = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function fetchPosts() {
-            const container = document.getElementById('posts-container');
-            if (typeof supabase === 'undefined') {
-                container.innerHTML = '<div class="status">라이브러리 로드 실패</div>';
-                return;
-            }
+        let allPosts = [];
 
-            const { createClient } = supabase;
-            const client = createClient(SUPABASE_URL, SUPABASE_KEY);
-            
+        async function init() {
+            const grid = document.getElementById('posts-grid');
             try {
-                const { data: posts, error } = await client
+                const { data, error } = await client
                     .from('posts')
                     .select('*')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
+                allPosts = data || [];
 
-                if (!posts || posts.length === 0) {
-                    container.innerHTML = '<div class="status">아직 등록된 포스팅이 없습니다. (DB에 데이터를 추가해 보세요!)</div>';
+                if (allPosts.length === 0) {
+                    grid.innerHTML = '등록된 포스팅이 없습니다.';
                     return;
                 }
 
-                container.innerHTML = '';
-                posts.forEach(post => {
-                    const date = new Date(post.created_at).toLocaleDateString('ko-KR');
-                    const article = document.createElement('article');
-                    article.innerHTML = `
-                        <div class="meta">${date}</div>
-                        <h2>${post.title}</h2>
-                        <p>${post.content.replace(/\n/g, '<br>')}</p>
-                    `;
-                    container.appendChild(article);
-                });
-
+                renderList(allPosts);
             } catch (err) {
+                grid.innerHTML = '데이터 로딩 중 오류가 발생했습니다.';
                 console.error(err);
-                container.innerHTML = `<div class="status">오류 발생: ${err.message}</div>`;
             }
         }
 
-        fetchPosts();
+        function renderList(posts) {
+            const grid = document.getElementById('posts-grid');
+            grid.innerHTML = '';
+            
+            posts.forEach((post, index) => {
+                const date = new Date(post.created_at).toLocaleDateString('ko-KR');
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => showDetail(index);
+                card.innerHTML = `
+                    <div class="card-body">
+                        <div class="card-meta">${date}</div>
+                        <div class="card-title">${post.title}</div>
+                        <div class="card-excerpt">${post.content}</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function showDetail(index) {
+            const post = allPosts[index];
+            const detailBody = document.getElementById('detail-body');
+            const date = new Date(post.created_at).toLocaleDateString('ko-KR');
+            
+            detailBody.innerHTML = `
+                <div class="card-meta">${date}</div>
+                <h2>${post.title}</h2>
+                <div class="detail-content">${post.content}</div>
+            `;
+            
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('post-detail').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        function showList() {
+            document.getElementById('list-view').style.display = 'block';
+            document.getElementById('post-detail').style.display = 'none';
+        }
+
+        init();
     </script>
 </body>
 </html>
